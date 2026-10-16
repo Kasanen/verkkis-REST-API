@@ -17,7 +17,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 import verkkis.demo.dto.CreateOrderRequest;
+import verkkis.demo.dto.OrderHistoryEntry;
 import verkkis.demo.dto.OrderResponse;
 import verkkis.demo.dto.OrderSummary;
 import verkkis.demo.dto.PageResponse;
@@ -45,6 +48,11 @@ public class OrderController {
     @GetMapping("/{id}")
     public OrderResponse get(@PathVariable Integer id) {
         return orderService.get(id);
+    }
+
+    @GetMapping("/{id}/history")
+    public List<OrderHistoryEntry> history(@PathVariable Integer id) {
+        return orderService.getHistory(id);
     }
 
     // GET /api/orders?status=NEW&page=0&size=20 — ylläpidon tilauslistaus

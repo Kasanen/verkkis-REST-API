@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import verkkis.demo.dto.OrderHistoryEntry;
 import verkkis.demo.dto.OrderSummary;
 import verkkis.demo.model.Order;
 
@@ -47,4 +48,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
             """,
             countQuery = "SELECT COUNT(o) FROM Order o WHERE :status IS NULL OR o.status = :status")
     Page<OrderSummary> findSummaries(@Param("status") String status, Pageable pageable);
+
+    @Query("SELECT new verkkis.demo.dto.OrderHistoryEntry(o.id, o.status, o.orderDate) FROM Order o WHERE o.id = :id ORDER BY o.orderDate DESC")
+    List<OrderHistoryEntry> findHistoryById(@Param("id") Integer id);
 }

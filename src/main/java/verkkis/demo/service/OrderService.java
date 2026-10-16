@@ -16,6 +16,7 @@ import jakarta.persistence.EntityManager;
 import verkkis.demo.dto.AddressResponse;
 import verkkis.demo.dto.CreateOrderRequest;
 import verkkis.demo.dto.CustomerRef;
+import verkkis.demo.dto.OrderHistoryEntry;
 import verkkis.demo.dto.OrderLineResponse;
 import verkkis.demo.dto.OrderResponse;
 import verkkis.demo.dto.OrderSummary;
@@ -122,6 +123,11 @@ public class OrderService {
 
     public OrderResponse get(Integer id) {
         return toResponse(findWithDetails(id));
+    }
+
+    public List<OrderHistoryEntry> getHistory(Integer id) {
+        findWithDetails(id);
+        return orderRepository.findHistoryById(id);
     }
 
     public PageResponse<OrderSummary> list(String status, Pageable pageable) {

@@ -1,8 +1,21 @@
-# Demo project documentation
+# Verkkis API
+Authors: Elias Norta, Veijo Kasanen
 
-This project is a Spring Boot application for studying JPA mappings, repository-based CRUD, and a small REST API.
+## Demo project documentation
 
-The codebase currently exposes one public REST controller for suppliers. The rest of the domain is accessed through Spring Data JPA repositories and custom repository classes.
+This project is a web shop and supplier admin backend. It covers product, customer, supplier, and order management in a commerce workflow.
+
+## Usage completion view
+
+From this perspective, the project is complete for the main backend flow:
+
+- supplier management
+- product catalog and stock handling
+- customer and order processing
+- discount/restock logic
+- reporting for low stock and sales
+
+This is not a full storefront or production security setup, but it matches the backend admin/web shop use case the project is designed to demonstrate.
 
 ## What is implemented
 
@@ -18,247 +31,194 @@ The project currently includes:
 
 There is no authentication layer, no authorization layer, and no separate frontend in this project.
 
-## REST API
+## Installation and Setup
 
-Base path: `/suppliers`
+### Prerequisites
 
-All request bodies and responses use JSON.
+- Java 21
+- Maven
+- MariaDB or MySQL running locally
+- A database named `verkkis`
 
-### GET `/suppliers`
+### Database configuration
 
-Purpose: return all suppliers.
+The application configuration is in `src/main/resources/application.yaml`.
 
-Request format:
+### Run the application
 
-```http
-GET /suppliers
+```bash
+./mvnw spring-boot:run
 ```
 
-Response format:
+The app starts on port `8081`.
+
+## Project Structure
+
+![Project Structure Diagram](/resource/diagram2.png)
+
+```text
+src/
+├── main/
+│   ├── java/
+│   │   └── verkkis/
+│   │       └── demo/
+│   │           ├── DemoApplication.java
+│   │           ├── controller/
+│   │           │   └── SupplierController.java
+│   │           ├── converter/
+│   │           │   └── LowercaseEmailConverter.java
+│   │           ├── model/
+│   │           │   ├── Address.java
+│   │           │   ├── Contact.java
+│   │           │   ├── Customer.java
+│   │           │   ├── CustomerAddress.java
+│   │           │   ├── Order.java
+│   │           │   ├── OrderItem.java
+│   │           │   ├── Product.java
+│   │           │   ├── ProductCategory.java
+│   │           │   ├── Supplier.java
+│   │           │   └── SupplierAddress.java
+│   │           ├── repository/
+│   │           │   ├── AddressRepository.java
+│   │           │   ├── ContactRepository.java
+│   │           │   ├── CustomerRepository.java
+│   │           │   ├── CustomerAddressRepository.java
+│   │           │   ├── OrderCriteriaRepository.java
+│   │           │   ├── OrderRepository.java
+│   │           │   ├── ProductCategoryRepository.java
+│   │           │   ├── ProductCriteriaRepository.java
+│   │           │   ├── ProductRepository.java
+│   │           │   ├── SupplierAddressRepository.java
+│   │           │   └── SupplierRepository.java
+│   │           └── service/
+│   │               └── ProductService.java
+│   └── resources/
+│       ├── application.yaml
+│       ├── static/
+│       └── templates/
+└── test/
+    └── java/
+        └── verkkis/
+            ├── InheritanceTest.java
+            ├── LowercaseEmailConverterTest.java
+            ├── ManyToManyTest.java
+            ├── OneToOneTest.java
+            ├── OrderCriteriaDeleteTest.java
+            ├── OrderPrePersistTest.java
+            ├── ProductRepositoryTest.java
+            ├── SupplierProductsScenarioTest.java
+            └── ...
+```
+
+## Database features
+
+The `verkkis` MariaDB schema is managed with the scripts. These parts are invisible in the API but are part of the solution.
+
+| Feature          | Implementation                                                                                    | Purpose                                                                                                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Indexes**      | `idx_orders_order_date`, `idx_orders_status`; unique `idx_customers_email`, `idx_suppliers_email` | Faster date and status queries and email lookups; unique emails prevent duplicates. Effect checked with `EXPLAIN` and `mysqlslap`. The optimizer skips an index when a query matches a large share of the table. |
+| **Views**        | `product_overview`, `monthly_sales_summary`                                                       | `product_overview` joins products with category and supplier for the web-shop product list. `monthly_sales_summary` gives orders, items and revenue per month, excluding cancelled orders.                       |
+| **Triggers**     | `trg_orderitems_before_insert`, `trg_orderitems_after_insert`                                     | The BEFORE trigger rejects an order line if stock is insufficient (`SQLSTATE 45000`). The AFTER trigger reduces `products.stock_quantity`. The application must not reduce stock itself.                         |
+| **Event**        | `evt_clean_old_cancelled_orders`, runs daily                                                      | Deletes `CANCELLED` orders older than 90 days. Requires `event_scheduler=ON`. Tested on a copy table.                                                                                                            |
+| **Temporal**     | `ALTER TABLE orders ADD SYSTEM VERSIONING`                                                        | Keeps every version of an order (transaction time), so status history can be queried with `FOR SYSTEM_TIME ALL` / `AS OF` and is served by `GET /orders/{id}/history`.                                           |
+| **Transactions** | Order creation in one transaction                                                                 | Order, order lines and stock changes are saved together or not at all.                                                                                                                                           |
+
+## API Documentation
+
+Base URL:
+
+```http
+http://localhost:8081
+```
+
+All requests use JSON and the app is organized around `/api` resources.
+
+### Endpoint quick reference
+
+| Resource           | Method | Endpoint                                    | Purpose                       |
+| ------------------ | ------ | ------------------------------------------- | ----------------------------- |
+| Suppliers          | GET    | `/api/suppliers`                            | List all suppliers            |
+| Suppliers          | GET    | `/api/suppliers/{id}`                       | Get one supplier              |
+| Suppliers          | GET    | `/api/suppliers/{id}/products`              | Supplier products with paging |
+| Suppliers          | POST   | `/api/suppliers`                            | Create supplier               |
+| Suppliers          | PUT    | `/api/suppliers/{id}`                       | Update supplier               |
+| Suppliers          | DELETE | `/api/suppliers/{id}`                       | Delete supplier               |
+| Suppliers          | POST   | `/api/suppliers/{id}/discount`              | Apply percentage discount     |
+| Suppliers          | POST   | `/api/suppliers/{id}/restock`               | Restock supplier products     |
+| Products           | GET    | `/api/products`                             | Search/filter products        |
+| Products           | GET    | `/api/products/{id}`                        | Get product by id             |
+| Products           | POST   | `/api/products`                             | Create product                |
+| Products           | PUT    | `/api/products/{id}`                        | Update product                |
+| Products           | DELETE | `/api/products/{id}`                        | Delete product                |
+| Customers          | GET    | `/api/customers`                            | Search customers              |
+| Customers          | GET    | `/api/customers/{id}`                       | Get customer                  |
+| Customers          | POST   | `/api/customers`                            | Register customer             |
+| Customers          | PUT    | `/api/customers/{id}`                       | Update customer               |
+| Customers          | DELETE | `/api/customers/{id}`                       | Delete customer               |
+| Customer addresses | GET    | `/api/customers/{id}/addresses`             | List addresses                |
+| Customer addresses | POST   | `/api/customers/{id}/addresses`             | Add address                   |
+| Customer addresses | PUT    | `/api/customers/{id}/addresses/{addressId}` | Update address                |
+| Customer addresses | DELETE | `/api/customers/{id}/addresses/{addressId}` | Delete address                |
+| Orders             | GET    | `/api/customers/{id}/orders`                | Customer order history        |
+| Orders             | POST   | `/api/orders`                               | Create order                  |
+| Orders             | GET    | `/api/orders/{id}`                          | Get order                     |
+| Orders             | GET    | `/api/orders`                               | List orders                   |
+| Orders             | POST   | `/api/orders/{id}/cancel`                   | Cancel order                  |
+| Orders             | PATCH  | `/api/orders/{id}/status`                   | Update order status           |
+| Orders             | DELETE | `/api/orders/cancelled?olderThanDays=90`    | Remove old cancelled orders   |
+| Categories         | GET    | `/api/categories`                           | List categories               |
+| Categories         | GET    | `/api/categories/{id}`                      | Get category                  |
+| Categories         | GET    | `/api/categories/{id}/products`             | Category products             |
+| Categories         | POST   | `/api/categories`                           | Create category               |
+| Categories         | PUT    | `/api/categories/{id}`                      | Update category               |
+| Categories         | DELETE | `/api/categories/{id}`                      | Delete category               |
+| Reports            | GET    | `/api/reports/monthly-sales`                | Monthly sales report          |
+| Reports            | GET    | `/api/reports/low-stock`                    | Low-stock product report      |
+| Reports            | GET    | `/api/reports/top-products`                 | Top-selling products          |
+| Reports            | GET    | `/api/reports/top-customers`                | Top customers                 |
+
+### Typical request bodies
 
 ```json
-[
-  {
-    "id": 1,
-    "name": "Nordic Audio",
-    "email": "sales@nordicaudio.fi",
-    "products": []
-  }
-]
-```
-
-### GET `/suppliers/{id}`
-
-Purpose: fetch one supplier by identifier.
-
-Request format:
-
-```http
-GET /suppliers/1
-```
-
-Response format:
-
-```json
-{
-  "id": 1,
-  "name": "Nordic Audio",
-  "email": "sales@nordicaudio.fi",
-  "products": []
-}
-```
-
-If the supplier does not exist, the API returns `404 Not Found`.
-
-### POST `/suppliers`
-
-Purpose: create a new supplier.
-
-Request format:
-
-```http
-POST /suppliers
-Content-Type: application/json
-
 {
   "name": "Nordic Audio",
   "email": "sales@nordicaudio.fi"
 }
 ```
 
-Response format:
+```json
+{
+  "percent": 15
+}
+```
 
 ```json
 {
-  "id": 1,
-  "name": "Nordic Audio",
-  "email": "sales@nordicaudio.fi",
-  "products": []
+  "status": "SHIPPED"
 }
 ```
 
-The endpoint returns `201 Created` on success.
+### Example calls
 
-### PUT `/suppliers/{id}`
-
-Purpose: update an existing supplier.
-
-Request format:
-
-```http
-PUT /suppliers/1
-Content-Type: application/json
-
-{
-  "name": "Nordic Audio Oy",
-  "email": "info@nordicaudio.fi"
-}
+```bash
+curl http://localhost:8081/api/suppliers
+curl http://localhost:8081/api/products?inStock=true
+curl http://localhost:8081/api/orders
+curl http://localhost:8081/api/reports/low-stock?threshold=5&limit=20
 ```
 
-Response format:
+## Security
 
-```json
-{
-  "id": 1,
-  "name": "Nordic Audio Oy",
-  "email": "info@nordicaudio.fi",
-  "products": []
-}
-```
+This project currently has:
 
-If the supplier does not exist, the API returns `404 Not Found`.
+- no authentication
+- no authorization
+- no Spring Security configuration
+- no role-based access control
 
-### DELETE `/suppliers/{id}`
+This is educational code, not a production-ready secured API.
 
-Purpose: delete a supplier.
-
-Request format:
-
-```http
-DELETE /suppliers/1
-```
-
-Response format:
-
-```http
-204 No Content
-```
-
-If the supplier does not exist, the API returns `404 Not Found`.
-
-## Repository-backed functionality
-
-These classes expose CRUD and custom data access even though they are not HTTP endpoints:
-
-- [ProductRepository](src/main/java/verkkis/demo/repository/ProductRepository.java)
-  - Standard CRUD through `JpaRepository`.
-  - `findBySupplierId(Integer supplierId)`.
-  - `increaseStockForSupplier(Integer supplierId)`.
-- [SupplierRepository](src/main/java/verkkis/demo/repository/SupplierRepository.java)
-  - Standard CRUD through `JpaRepository`.
-- [CustomerRepository](src/main/java/verkkis/demo/repository/CustomerRepository.java)
-  - Standard CRUD through `JpaRepository`.
-- [OrderRepository](src/main/java/verkkis/demo/repository/OrderRepository.java)
-  - Standard CRUD through `JpaRepository`.
-- [AddressRepository](src/main/java/verkkis/demo/repository/AddressRepository.java)
-  - Polymorphic read access for the address hierarchy.
-- [ContactRepository](src/main/java/verkkis/demo/repository/ContactRepository.java)
-  - Standard CRUD through `JpaRepository`.
-- [ProductCategoryRepository](src/main/java/verkkis/demo/repository/ProductCategoryRepository.java)
-  - Standard CRUD through `JpaRepository`.
-- [CustomerAddressRepository](src/main/java/verkkis/demo/repository/CustomerAddressRepository.java)
-  - Standard CRUD through `JpaRepository`.
-- [SupplierAddressRepository](src/main/java/verkkis/demo/repository/SupplierAddressRepository.java)
-  - Standard CRUD through `JpaRepository`.
-- [ProductCriteriaRepository](src/main/java/verkkis/demo/repository/ProductCriteriaRepository.java)
-  - `applyDiscountForSupplier(Integer supplierId, BigDecimal discountMultiplier)`.
-- [OrderCriteriaRepository](src/main/java/verkkis/demo/repository/OrderCriteriaRepository.java)
-  - `deleteOldCancelledOrders(int daysOld)`.
-
-## Domain model
-
-The persistence model currently includes:
-
-- [Supplier](src/main/java/verkkis/demo/model/Supplier.java)
-  - Has a unique email.
-  - Owns a one-to-many relationship to products.
-- [Product](src/main/java/verkkis/demo/model/Product.java)
-  - Has name, price, and stock quantity.
-  - Belongs to one supplier.
-  - Can belong to one direct category reference and also many categories through the join table `product_category_mapping`.
-- [ProductCategory](src/main/java/verkkis/demo/model/ProductCategory.java)
-  - Many-to-many inverse side of product categories.
-- [Customer](src/main/java/verkkis/demo/model/Customer.java)
-  - Uses the lowercase email converter.
-  - Has a primary contact and a one-to-many contact list.
-- [Contact](src/main/java/verkkis/demo/model/Contact.java)
-  - Belongs to a customer.
-  - Can be referenced as the primary contact of one customer.
-- [Order](src/main/java/verkkis/demo/model/Order.java)
-  - Belongs to one customer.
-  - Can have one shipping address.
-  - Owns order items.
-  - Sets default values on persist.
-- [OrderItem](src/main/java/verkkis/demo/model/OrderItem.java)
-  - Belongs to one order and one product.
-- [Address](src/main/java/verkkis/demo/model/Address.java)
-  - Abstract base entity for address inheritance.
-- [CustomerAddress](src/main/java/verkkis/demo/model/CustomerAddress.java)
-  - Joined inheritance subtype of Address.
-- [SupplierAddress](src/main/java/verkkis/demo/model/SupplierAddress.java)
-  - Joined inheritance subtype of Address.
-
-## Database details that are not visible from the API
-
-The schema is generated by JPA/Hibernate from the entity mappings. Important details:
-
-- `suppliers.email` is unique.
-- Primary keys and foreign keys are generated from the JPA annotations.
-- `Address` uses joined inheritance, so the `addresses` table is the base table and subtype data lives in `customer_addresses` and `supplier_addresses`.
-- `products` has both a direct supplier foreign key and a category foreign key, plus a many-to-many join table `product_category_mapping`.
-- `orders` references `customers` and `customer_addresses`.
-- `contacts` references `customers`.
-- `orderitems` references `orders` and `products`.
-
-What is not present right now:
-
-- No explicit database indexes are declared in the code.
-- No database views are defined.
-- No stored procedures are defined.
-- No Spring Security configuration is defined.
-- No authentication or authorization is enforced.
-
-## Database features
-
-The `verkkis` MariaDB schema is managed with the scripts. These parts are invisible in the API but are part of the solution.
-
-| Feature | Implementation | Purpose |
-|---|---|---|
-| **Indexes** | `idx_orders_order_date`, `idx_orders_status`; unique `idx_customers_email`, `idx_suppliers_email` | Faster date and status queries and email lookups; unique emails prevent duplicates. Effect checked with `EXPLAIN` and `mysqlslap`. The optimizer skips an index when a query matches a large share of the table. |
-| **Views** | `product_overview`, `monthly_sales_summary` | `product_overview` joins products with category and supplier for the web-shop product list. `monthly_sales_summary` gives orders, items and revenue per month, excluding cancelled orders. |
-| **Triggers** | `trg_orderitems_before_insert`, `trg_orderitems_after_insert` | The BEFORE trigger rejects an order line if stock is insufficient (`SQLSTATE 45000`). The AFTER trigger reduces `products.stock_quantity`. The application must not reduce stock itself. |
-| **Event** | `evt_clean_old_cancelled_orders`, runs daily | Deletes `CANCELLED` orders older than 90 days. Requires `event_scheduler=ON`. Tested on a copy table. |
-| **Temporal** | `ALTER TABLE orders ADD SYSTEM VERSIONING` | Keeps every version of an order (transaction time), so status history can be queried with `FOR SYSTEM_TIME ALL` / `AS OF` and is served by `GET /orders/{id}/history`. |
-| **Transactions** | Order creation in one transaction | Order, order lines and stock changes are saved together or not at all. |
-
-## Hidden behavior and constraints
-
-- Customer email values are normalized to lowercase by `LowercaseEmailConverter`.
-- `Order` sets `status` to `NEW` and `orderDate` to the current time if they are missing during persistence.
-- `ProductRepositoryTest` and `SupplierProductsScenarioTest` verify repository behavior around supplier-linked products.
-- `OrderCriteriaDeleteTest` verifies the custom criteria delete for old cancelled orders.
-- `InheritanceTest` verifies the joined inheritance address model.
-
-## Configuration
-
-Application settings live in [src/main/resources/application.yaml](src/main/resources/application.yaml).
-
-- Spring Boot runs on port `8081`.
-- The application connects to MariaDB by default.
-- Hibernate SQL logging is enabled.
-- The schema validation mode is enabled through JPA properties.
-
-## Tests
+## Testing
 
 Current tests cover:
 
@@ -276,9 +236,3 @@ Run the tests with:
 ```bash
 ./mvnw test
 ```
-
-## Notes on completeness
-
-The project is functionally complete for the supplier REST resource and for the repository-level domain model that the tests exercise. It is not a full CRUD API for every entity yet, because only suppliers are exposed through HTTP controllers.
-
-If you want a broader HTTP API, the next logical additions would be controllers for products, customers, and orders.
