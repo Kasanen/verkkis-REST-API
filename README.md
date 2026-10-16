@@ -1,4 +1,5 @@
 # Verkkis API
+
 Authors: Elias Norta, Veijo Kasanen
 
 ## Demo project documentation
@@ -19,17 +20,15 @@ This is not a full storefront or production security setup, but it matches the b
 
 ## What is implemented
 
-The project currently includes:
+The project includes the main backend flow for a web shop:
 
-- Supplier CRUD over HTTP.
-- Repository-based CRUD for customers, orders, addresses, contacts, product categories, and products.
-- Custom repository operations for product stock updates, supplier-wide discounts, and deleting old cancelled orders.
-- JPA inheritance for address entities.
-- One-to-one, one-to-many, and many-to-many relationships.
-- Email normalization through a JPA attribute converter.
-- Persistence tests that cover the implemented repository behavior.
-
-There is no authentication layer, no authorization layer, and no separate frontend in this project.
+- supplier CRUD and supplier product management
+- product catalog, filtering, stock updates, and pricing logic
+- customer and address handling
+- order creation, cancellation, status updates, and order history
+- category-based product browsing
+- reports for low stock, sales, and top customers
+- JPA relationships, inheritance, and database triggers for business rules
 
 ## Installation and Setup
 
@@ -112,16 +111,18 @@ src/
 
 ## Database features
 
-The `verkkis` MariaDB schema is managed with the scripts. These parts are invisible in the API but are part of the solution.
+The `verkkis` schema includes a few database-level features that support the webshop logic.
 
-| Feature          | Implementation                                                                                    | Purpose                                                                                                                                                                                                          |
-| ---------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Indexes**      | `idx_orders_order_date`, `idx_orders_status`; unique `idx_customers_email`, `idx_suppliers_email` | Faster date and status queries and email lookups; unique emails prevent duplicates. Effect checked with `EXPLAIN` and `mysqlslap`. The optimizer skips an index when a query matches a large share of the table. |
-| **Views**        | `product_overview`, `monthly_sales_summary`                                                       | `product_overview` joins products with category and supplier for the web-shop product list. `monthly_sales_summary` gives orders, items and revenue per month, excluding cancelled orders.                       |
-| **Triggers**     | `trg_orderitems_before_insert`, `trg_orderitems_after_insert`                                     | The BEFORE trigger rejects an order line if stock is insufficient (`SQLSTATE 45000`). The AFTER trigger reduces `products.stock_quantity`. The application must not reduce stock itself.                         |
-| **Event**        | `evt_clean_old_cancelled_orders`, runs daily                                                      | Deletes `CANCELLED` orders older than 90 days. Requires `event_scheduler=ON`. Tested on a copy table.                                                                                                            |
-| **Temporal**     | `ALTER TABLE orders ADD SYSTEM VERSIONING`                                                        | Keeps every version of an order (transaction time), so status history can be queried with `FOR SYSTEM_TIME ALL` / `AS OF` and is served by `GET /orders/{id}/history`.                                           |
-| **Transactions** | Order creation in one transaction                                                                 | Order, order lines and stock changes are saved together or not at all.                                                                                                                                           |
+SQL scripts used in project [sql](sql).
+
+| Feature      | Implementation                                                                             | Purpose                                                       |
+| ------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| Indexes      | `idx_orders_order_date`, `idx_orders_status`, `idx_customers_email`, `idx_suppliers_email` | Faster lookups and unique customer/supplier email checks      |
+| Views        | `product_overview`, `monthly_sales_summary`                                                | Product listing and monthly sales summaries                   |
+| Triggers     | `trg_orderitems_before_insert`, `trg_orderitems_after_insert`                              | Prevents invalid stock orders and updates stock automatically |
+| Event        | `evt_clean_old_cancelled_orders`                                                           | Removes cancelled orders older than 90 days                   |
+| Temporal     | `ALTER TABLE orders ADD SYSTEM VERSIONING`                                                 | Keeps order history for status tracking                       |
+| Transactions | Order creation in one transaction                                                          | Keeps order + lines + stock updates consistent                |
 
 ## API Documentation
 
@@ -133,49 +134,79 @@ http://localhost:8081
 
 All requests use JSON and the app is organized around `/api` resources.
 
-### Endpoint quick reference
+### Endpoint reference
 
-| Resource           | Method | Endpoint                                    | Purpose                       |
-| ------------------ | ------ | ------------------------------------------- | ----------------------------- |
-| Suppliers          | GET    | `/api/suppliers`                            | List all suppliers            |
-| Suppliers          | GET    | `/api/suppliers/{id}`                       | Get one supplier              |
-| Suppliers          | GET    | `/api/suppliers/{id}/products`              | Supplier products with paging |
-| Suppliers          | POST   | `/api/suppliers`                            | Create supplier               |
-| Suppliers          | PUT    | `/api/suppliers/{id}`                       | Update supplier               |
-| Suppliers          | DELETE | `/api/suppliers/{id}`                       | Delete supplier               |
-| Suppliers          | POST   | `/api/suppliers/{id}/discount`              | Apply percentage discount     |
-| Suppliers          | POST   | `/api/suppliers/{id}/restock`               | Restock supplier products     |
-| Products           | GET    | `/api/products`                             | Search/filter products        |
-| Products           | GET    | `/api/products/{id}`                        | Get product by id             |
-| Products           | POST   | `/api/products`                             | Create product                |
-| Products           | PUT    | `/api/products/{id}`                        | Update product                |
-| Products           | DELETE | `/api/products/{id}`                        | Delete product                |
-| Customers          | GET    | `/api/customers`                            | Search customers              |
-| Customers          | GET    | `/api/customers/{id}`                       | Get customer                  |
-| Customers          | POST   | `/api/customers`                            | Register customer             |
-| Customers          | PUT    | `/api/customers/{id}`                       | Update customer               |
-| Customers          | DELETE | `/api/customers/{id}`                       | Delete customer               |
-| Customer addresses | GET    | `/api/customers/{id}/addresses`             | List addresses                |
-| Customer addresses | POST   | `/api/customers/{id}/addresses`             | Add address                   |
-| Customer addresses | PUT    | `/api/customers/{id}/addresses/{addressId}` | Update address                |
-| Customer addresses | DELETE | `/api/customers/{id}/addresses/{addressId}` | Delete address                |
-| Orders             | GET    | `/api/customers/{id}/orders`                | Customer order history        |
-| Orders             | POST   | `/api/orders`                               | Create order                  |
-| Orders             | GET    | `/api/orders/{id}`                          | Get order                     |
-| Orders             | GET    | `/api/orders`                               | List orders                   |
-| Orders             | POST   | `/api/orders/{id}/cancel`                   | Cancel order                  |
-| Orders             | PATCH  | `/api/orders/{id}/status`                   | Update order status           |
-| Orders             | DELETE | `/api/orders/cancelled?olderThanDays=90`    | Remove old cancelled orders   |
-| Categories         | GET    | `/api/categories`                           | List categories               |
-| Categories         | GET    | `/api/categories/{id}`                      | Get category                  |
-| Categories         | GET    | `/api/categories/{id}/products`             | Category products             |
-| Categories         | POST   | `/api/categories`                           | Create category               |
-| Categories         | PUT    | `/api/categories/{id}`                      | Update category               |
-| Categories         | DELETE | `/api/categories/{id}`                      | Delete category               |
-| Reports            | GET    | `/api/reports/monthly-sales`                | Monthly sales report          |
-| Reports            | GET    | `/api/reports/low-stock`                    | Low-stock product report      |
-| Reports            | GET    | `/api/reports/top-products`                 | Top-selling products          |
-| Reports            | GET    | `/api/reports/top-customers`                | Top customers                 |
+All endpoints return JSON. Common response codes are `200 OK`, `201 Created`, `400 Bad Request`, `404 Not Found`, `409 Conflict`, and `500 Internal Server Error`.
+
+Common query parameters:
+
+- `page`, `size`
+- `status` for orders
+- `inStock` for products
+- `threshold`, `limit` for reports
+- `olderThanDays` for cleanup
+
+| Resource   | Method | Endpoint                     | Query params              | Success JSON                       | Errors                     |
+| ---------- | ------ | ---------------------------- | ------------------------- | ---------------------------------- | -------------------------- |
+| Suppliers  | GET    | `/api/suppliers`             | `page`, `size`            | list of supplier objects           | `400`, `500`               |
+| Suppliers  | GET    | `/api/suppliers/{id}`        | —                         | supplier object                    | `404`, `500`               |
+| Suppliers  | POST   | `/api/suppliers`             | —                         | created supplier object            | `400`, `409`, `500`        |
+| Suppliers  | PUT    | `/api/suppliers/{id}`        | —                         | updated supplier object            | `400`, `404`, `500`        |
+| Suppliers  | DELETE | `/api/suppliers/{id}`        | —                         | deleted confirmation or empty body | `404`, `500`               |
+| Products   | GET    | `/api/products`              | `inStock`, `page`, `size` | product list                       | `400`, `500`               |
+| Products   | GET    | `/api/products/{id}`         | —                         | product object                     | `404`, `500`               |
+| Products   | POST   | `/api/products`              | —                         | created product object             | `400`, `409`, `500`        |
+| Products   | PUT    | `/api/products/{id}`         | —                         | updated product object             | `400`, `404`, `500`        |
+| Products   | DELETE | `/api/products/{id}`         | —                         | deleted confirmation or empty body | `404`, `500`               |
+| Customers  | GET    | `/api/customers`             | `page`, `size`            | customer list                      | `400`, `500`               |
+| Customers  | GET    | `/api/customers/{id}`        | —                         | customer object                    | `404`, `500`               |
+| Customers  | POST   | `/api/customers`             | —                         | created customer object            | `400`, `409`, `500`        |
+| Customers  | PUT    | `/api/customers/{id}`        | —                         | updated customer object            | `400`, `404`, `500`        |
+| Customers  | DELETE | `/api/customers/{id}`        | —                         | deleted confirmation or empty body | `404`, `500`               |
+| Orders     | GET    | `/api/orders`                | `status`, `page`, `size`  | paged order summary list           | `400`, `500`               |
+| Orders     | GET    | `/api/orders/{id}`           | —                         | order object with items            | `404`, `500`               |
+| Orders     | GET    | `/api/orders/{id}/history`   | —                         | list of status history entries     | `404`, `500`               |
+| Orders     | POST   | `/api/orders`                | —                         | created order object               | `400`, `409`, `500`        |
+| Orders     | POST   | `/api/orders/{id}/cancel`    | —                         | cancelled order object             | `409`, `404`, `500`        |
+| Orders     | PATCH  | `/api/orders/{id}/status`    | —                         | updated order object               | `400`, `409`, `404`, `500` |
+| Orders     | DELETE | `/api/orders/cancelled`      | `olderThanDays`           | `{ "deletedOrders": n }`           | `400`, `500`               |
+| Categories | GET    | `/api/categories`            | `page`, `size`            | category list                      | `400`, `500`               |
+| Categories | GET    | `/api/categories/{id}`       | —                         | category object                    | `404`, `500`               |
+| Reports    | GET    | `/api/reports/monthly-sales` | —                         | sales summary JSON                 | `500`                      |
+| Reports    | GET    | `/api/reports/low-stock`     | `threshold`, `limit`      | low-stock list                     | `400`, `500`               |
+| Reports    | GET    | `/api/reports/top-products`  | `limit`                   | top products list                  | `400`, `500`               |
+| Reports    | GET    | `/api/reports/top-customers` | `limit`                   | top customers list                 | `400`, `500`               |
+
+### Example JSON response
+
+```json
+{
+  "id": 1,
+  "customer": {
+    "id": 5,
+    "name": "Anna Smith",
+    "email": "anna@example.com"
+  },
+  "orderDate": "2026-10-16T12:00:00",
+  "deliveryDate": null,
+  "status": "NEW",
+  "shippingAddress": {
+    "id": 2,
+    "street": "Main Street 1",
+    "city": "Helsinki"
+  },
+  "items": [
+    {
+      "productId": 10,
+      "productName": "Laptop",
+      "quantity": 1,
+      "unitPrice": 899.99,
+      "lineTotal": 899.99
+    }
+  ],
+  "total": 899.99
+}
+```
 
 ### Typical request bodies
 
@@ -206,17 +237,6 @@ curl http://localhost:8081/api/products?inStock=true
 curl http://localhost:8081/api/orders
 curl http://localhost:8081/api/reports/low-stock?threshold=5&limit=20
 ```
-
-## Security
-
-This project currently has:
-
-- no authentication
-- no authorization
-- no Spring Security configuration
-- no role-based access control
-
-This is educational code, not a production-ready secured API.
 
 ## Testing
 
