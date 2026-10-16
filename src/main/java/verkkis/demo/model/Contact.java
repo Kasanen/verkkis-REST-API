@@ -5,11 +5,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
+/**
+ * contacts-taulu: erillinen yhteystietotaulu (email + 32 merkin viite).
+ * Taululla ei ole viiteavainta muihin tauluihin.
+ */
 @Entity
 @Table(name = "contacts")
 public class Contact {
@@ -18,23 +19,18 @@ public class Contact {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne
-    @JoinColumn(name = "customer_id", nullable = false)
-    private Customer customer;
+    @Column(name = "email", nullable = false, length = 255)
+    private String email;
 
-    @Column(name = "phone", length = 50)
-    private String phone;
-
-    // Käänteinen puoli 1:1-suhteelle — kertoo onko TÄMÄ contact jonkun ensisijainen
-    @OneToOne(mappedBy = "primaryContact")
-    private Customer primaryForCustomer;
+    @Column(name = "reference", nullable = false, length = 32)
+    private String reference;
 
     public Contact() {
     }
 
-    public Contact(Customer customer, String phone) {
-        this.customer = customer;
-        this.phone = phone;
+    public Contact(String email, String reference) {
+        this.email = email;
+        this.reference = reference;
     }
 
     public Integer getId() {
@@ -45,23 +41,19 @@ public class Contact {
         this.id = id;
     }
 
-    public Customer getCustomer() {
-        return customer;
+    public String getEmail() {
+        return email;
     }
 
-    public void setCustomer(Customer customer) {
-        this.customer = customer;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
-    public String getPhone() {
-        return phone;
+    public String getReference() {
+        return reference;
     }
 
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public Customer getPrimaryForCustomer() {
-        return primaryForCustomer;
+    public void setReference(String reference) {
+        this.reference = reference;
     }
 }

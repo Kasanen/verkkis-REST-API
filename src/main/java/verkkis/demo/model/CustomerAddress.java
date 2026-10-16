@@ -1,17 +1,16 @@
 package verkkis.demo.model;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "customer_addresses")
-@PrimaryKeyJoinColumn(name = "id")   // liittää tämän taulun addresses-taulun id:hen
+@Table(name = "customeraddresses")
 public class CustomerAddress extends Address {
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
@@ -19,8 +18,8 @@ public class CustomerAddress extends Address {
         super();
     }
 
-    public CustomerAddress(Customer customer, String street, String city, String postalCode) {
-        super(street, city, postalCode);
+    public CustomerAddress(Customer customer, String streetAddress, String postalCode, String city, String country) {
+        super(streetAddress, postalCode, city, country);
         this.customer = customer;
     }
 

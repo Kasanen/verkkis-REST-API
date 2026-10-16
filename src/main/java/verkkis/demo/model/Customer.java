@@ -3,18 +3,15 @@ package verkkis.demo.model;
 import java.util.ArrayList;
 import java.util.List;
 
-import verkkis.demo.converter.LowercaseEmailConverter;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import verkkis.demo.converter.LowercaseEmailConverter;
 
 @Entity
 @Table(name = "customers")
@@ -24,26 +21,29 @@ public class Customer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "name", nullable = false, length = 255)
-    private String name;
+    @Column(name = "first_name", nullable = false, length = 100)
+    private String firstName;
 
+    @Column(name = "last_name", nullable = false, length = 100)
+    private String lastName;
+
+    // Sähköposti normalisoidaan pieniksi kirjaimiksi tallennettaessa
     @Column(name = "email", nullable = false, length = 255)
     @Convert(converter = LowercaseEmailConverter.class)
     private String email;
 
-    // 1:1-suhde — omistava puoli
-    @OneToOne
-    @JoinColumn(name = "primary_contact_id", referencedColumnName = "id", unique = true)
-    private Contact primaryContact;
+    @Column(name = "phone", length = 30)
+    private String phone;
 
-    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Contact> contacts = new ArrayList<>();
+    @OneToMany(mappedBy = "customer")
+    private List<CustomerAddress> addresses = new ArrayList<>();
 
     public Customer() {
     }
 
-    public Customer(String name, String email) {
-        this.name = name;
+    public Customer(String firstName, String lastName, String email) {
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.email = email;
     }
 
@@ -55,12 +55,20 @@ public class Customer {
         this.id = id;
     }
 
-    public String getName() {
-        return name;
+    public String getFirstName() {
+        return firstName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 
     public String getEmail() {
@@ -71,15 +79,15 @@ public class Customer {
         this.email = email;
     }
 
-    public Contact getPrimaryContact() {
-        return primaryContact;
+    public String getPhone() {
+        return phone;
     }
 
-    public void setPrimaryContact(Contact primaryContact) {
-        this.primaryContact = primaryContact;
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
-    public List<Contact> getContacts() {
-        return contacts;
+    public List<CustomerAddress> getAddresses() {
+        return addresses;
     }
 }

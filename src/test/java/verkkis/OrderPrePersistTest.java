@@ -27,7 +27,7 @@ public class OrderPrePersistTest {
     @Test
     @Transactional
     void defaultsAreSetOnPersist() {
-        Customer customer = customerRepository.save(new Customer("Testi Asiakas", "testi@example.com"));
+        Customer customer = customerRepository.save(new Customer("Testi", "Asiakas", "testi@example.com"));
 
         Order order = new Order();
         order.setCustomer(customer);
