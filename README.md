@@ -228,6 +228,19 @@ What is not present right now:
 - No Spring Security configuration is defined.
 - No authentication or authorization is enforced.
 
+## Database features
+
+The `verkkis` MariaDB schema is managed with the scripts. These parts are invisible in the API but are part of the solution.
+
+| Feature | Implementation | Purpose |
+|---|---|---|
+| **Indexes** | `idx_orders_order_date`, `idx_orders_status`; unique `idx_customers_email`, `idx_suppliers_email` | Faster date and status queries and email lookups; unique emails prevent duplicates. Effect checked with `EXPLAIN` and `mysqlslap`. The optimizer skips an index when a query matches a large share of the table. |
+| **Views** | `product_overview`, `monthly_sales_summary` | `product_overview` joins products with category and supplier for the web-shop product list. `monthly_sales_summary` gives orders, items and revenue per month, excluding cancelled orders. |
+| **Triggers** | `trg_orderitems_before_insert`, `trg_orderitems_after_insert` | The BEFORE trigger rejects an order line if stock is insufficient (`SQLSTATE 45000`). The AFTER trigger reduces `products.stock_quantity`. The application must not reduce stock itself. |
+| **Event** | `evt_clean_old_cancelled_orders`, runs daily | Deletes `CANCELLED` orders older than 90 days. Requires `event_scheduler=ON`. Tested on a copy table. |
+| **Temporal** | `ALTER TABLE orders ADD SYSTEM VERSIONING` | Keeps every version of an order (transaction time), so status history can be queried with `FOR SYSTEM_TIME ALL` / `AS OF` and is served by `GET /orders/{id}/history`. |
+| **Transactions** | Order creation in one transaction | Order, order lines and stock changes are saved together or not at all. |
+
 ## Hidden behavior and constraints
 
 - Customer email values are normalized to lowercase by `LowercaseEmailConverter`.
