@@ -19,8 +19,11 @@ public class ProductCategory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "name", nullable = false, length = 255)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 
     // Käänteinen puoli — mappedBy viittaa Product-luokan kenttään
     @ManyToMany(mappedBy = "categories")
@@ -47,6 +50,14 @@ public class ProductCategory {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public Set<Product> getProducts() {

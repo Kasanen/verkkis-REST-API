@@ -6,6 +6,7 @@ import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -26,22 +27,26 @@ public class Product {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
     @Column(name = "price", nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
     @Column(name = "stock_quantity", nullable = false)
     private Integer stockQuantity;
 
-    // PALAUTETTU: toimittajaviittaus
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id")
     private Supplier supplier;
 
-    // PALAUTETTU (valinnainen): kategoriaviittaus, jos käytät sekä vanhaa 1:M-saraketta että N:M-liitostaulua
-    @ManyToOne
+    // Tuotteen pääkategoria (products.category_id) — tätä REST API käyttää
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private ProductCategory category;
 
+    // N:M-tuntitehtävä: lisäkategoriat liitostaulun kautta.
+    // Liitostaulu luodaan oikeaan kantaan skriptillä sql/product_category_mapping.sql.
     @ManyToMany
     @JoinTable(
         name = "product_category_mapping",
@@ -82,6 +87,14 @@ public class Product {
         this.name = name;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
     public BigDecimal getPrice() {
         return price;
     }
@@ -104,6 +117,14 @@ public class Product {
 
     public void setSupplier(Supplier supplier) {
         this.supplier = supplier;
+    }
+
+    public ProductCategory getCategory() {
+        return category;
+    }
+
+    public void setCategory(ProductCategory category) {
+        this.category = category;
     }
 
     public Set<ProductCategory> getCategories() {

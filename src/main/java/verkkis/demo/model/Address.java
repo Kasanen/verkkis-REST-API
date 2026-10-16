@@ -1,39 +1,46 @@
 package verkkis.demo.model;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Inheritance;
-import jakarta.persistence.InheritanceType;
-import jakarta.persistence.Table;
+import jakarta.persistence.MappedSuperclass;
 
-@Entity
-@Table(name = "addresses")
-@Inheritance(strategy = InheritanceType.JOINED)
+/**
+ * Osoitteiden yhteinen yläluokka (periytyminen).
+ *
+ * Tietokannassa asiakas- ja toimittajaosoitteet ovat omissa tauluissaan
+ * (customeraddresses, supplieraddresses), joissa kummassakin on kaikki osoitekentät.
+ * Siksi yläluokka on @MappedSuperclass: kentät ja niiden sarakemäärittelyt periytyvät
+ * aliluokille, mutta yläluokalle ei ole omaa taulua.
+ */
+@MappedSuperclass
 public abstract class Address {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     protected Integer id;
 
-    @Column(name = "street", length = 255)
-    protected String street;
-
-    @Column(name = "city", length = 100)
-    protected String city;
+    @Column(name = "street_address", nullable = false, length = 255)
+    protected String streetAddress;
 
     @Column(name = "postal_code", length = 20)
     protected String postalCode;
 
-    public Address() {
+    @Column(name = "city", nullable = false, length = 100)
+    protected String city;
+
+    @Column(name = "country", length = 100)
+    protected String country;
+
+    protected Address() {
     }
 
-    public Address(String street, String city, String postalCode) {
-        this.street = street;
-        this.city = city;
+    protected Address(String streetAddress, String postalCode, String city, String country) {
+        this.streetAddress = streetAddress;
         this.postalCode = postalCode;
+        this.city = city;
+        this.country = country;
     }
 
     public Integer getId() {
@@ -44,12 +51,20 @@ public abstract class Address {
         this.id = id;
     }
 
-    public String getStreet() {
-        return street;
+    public String getStreetAddress() {
+        return streetAddress;
     }
 
-    public void setStreet(String street) {
-        this.street = street;
+    public void setStreetAddress(String streetAddress) {
+        this.streetAddress = streetAddress;
+    }
+
+    public String getPostalCode() {
+        return postalCode;
+    }
+
+    public void setPostalCode(String postalCode) {
+        this.postalCode = postalCode;
     }
 
     public String getCity() {
@@ -60,11 +75,11 @@ public abstract class Address {
         this.city = city;
     }
 
-    public String getPostalCode() {
-        return postalCode;
+    public String getCountry() {
+        return country;
     }
 
-    public void setPostalCode(String postalCode) {
-        this.postalCode = postalCode;
+    public void setCountry(String country) {
+        this.country = country;
     }
 }

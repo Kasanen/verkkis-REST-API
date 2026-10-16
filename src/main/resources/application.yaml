@@ -1,11 +1,4 @@
 spring:
-  jpa:
-    properties:
-      hibernate:
-        show_sql: true
-        format_sql: true
-        ddl-auto: validate
-  
   application:
     name: demo
 
@@ -14,6 +7,22 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver
+
+  jpa:
+    # Skeema on olemassa (MariaDB-dump), Hibernate ei luo eikä muuta tauluja
+    hibernate:
+      ddl-auto: none
+    # Lazy-latauksia ei tehdä HTTP-vastauksen aikana: palvelut palauttavat valmiit DTO:t
+    open-in-view: false
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+
+  data:
+    web:
+      pageable:
+        max-page-size: 100
 
 server:
   port: 8081
