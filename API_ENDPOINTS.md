@@ -30,7 +30,6 @@ Response body:
 
 Status codes:
 - `200 OK` on success
-- `500` is not explicitly handled in `ApiExceptionHandler` and is therefore unclear beyond default Spring behavior (see `src/main/java/verkkis/demo/exception/ApiExceptionHandler.java`)
 
 #### GET /api/suppliers/{id}
 Purpose: Return one supplier including address data and product count.
@@ -230,7 +229,6 @@ Status codes:
 - `200 OK` on success
 - `400 Bad Request` if request body is missing or percent is invalid
 - `404 Not Found` if the supplier does not exist
-- `409 Conflict` may occur on database integrity issues, as handled by `ApiExceptionHandler`
 
 #### POST /api/suppliers/{id}/restock
 Purpose: Increase stock by 50 for each product supplied by the supplier.
@@ -251,7 +249,6 @@ Response body:
 Status codes:
 - `200 OK` on success
 - `404 Not Found` if the supplier does not exist
-- `400 Bad Request` is not explicitly thrown here, but could appear through downstream validation if that layer changes; in the current code path the main explicit failure is `NotFoundException` (`SupplierService.restock` calls `requireExists(id)`)
 
 ---
 
@@ -493,7 +490,6 @@ Response body:
 
 Status codes:
 - `200 OK` on success
-- `400 Bad Request` can occur if pagination/sort values are malformed; not explicitly enforced here beyond Spring parsing
 
 #### GET /api/customers/{id}
 Purpose: Get one customer with addresses.
@@ -712,7 +708,6 @@ Status codes:
 - `200 OK` on success
 - `400 Bad Request` for invalid input
 - `404 Not Found` if customer or address does not exist
-- `409 Conflict` if the address is being used as shipping address in an order and such a constraint is triggered by database logic (not a direct explicit check in this method; the method itself checks `orderRepository.existsByShippingAddress_Id(addressId)` only in delete)
 
 #### DELETE /api/customers/{id}/addresses/{addressId}
 Purpose: Delete one customer address if it is not used in an order.
@@ -1252,7 +1247,6 @@ Response body:
 
 Status codes:
 - `200 OK` on success
-- no explicit error handling is defined in `ReportService` or `ApiExceptionHandler` for this method beyond generic Spring exceptions
 
 #### GET /api/reports/low-stock
 Purpose: Return products whose stock quantity is at or below a threshold.

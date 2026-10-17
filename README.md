@@ -18,8 +18,6 @@ From this perspective, the project is complete for the main backend flow:
 
 This is not a full storefront or production security setup, but it matches the backend admin/web shop use case the project is designed to demonstrate.
 
-For the code-based API contract reference, see [API_ENDPOINTS.md](API_ENDPOINTS.md).
-
 ## What is implemented
 
 The project includes the main backend flow for a web shop:
@@ -129,6 +127,63 @@ SQL scripts used in project [sql](sql).
 | Event        | `evt_clean_old_cancelled_orders`                                                           | Removes cancelled orders older than 90 days                   |
 | Temporal     | `ALTER TABLE orders ADD SYSTEM VERSIONING`                                                 | Keeps order history for status tracking                       |
 | Transactions | Order creation in one transaction                                                          | Keeps order + lines + stock updates consistent                |
+
+---
+
+## API Documentation
+
+Base URL:
+
+```http
+http://localhost:8081
+```
+
+All requests use JSON and the app is organized around `/api` resources.
+
+### Endpoint reference
+API contract reference: [API_ENDPOINTS.md](API_ENDPOINTS.md).
+
+All endpoints return JSON. Common response codes are `200 OK`, `201 Created`, `400 Bad Request`, `404 Not Found`, `409 Conflict`, and `500 Internal Server Error`.
+
+Common query parameters:
+
+- `page`, `size`
+- `status` for orders
+- `inStock` for products
+- `threshold`, `limit` for reports
+- `olderThanDays` for cleanup
+
+| Resource   | Method | Endpoint                     | Query params              | Success JSON                       | Errors                     |
+| ---------- | ------ | ---------------------------- | ------------------------- | ---------------------------------- | -------------------------- |
+| Suppliers  | GET    | `/api/suppliers`             | `page`, `size`            | list of supplier objects           | `400`, `500`               |
+| Suppliers  | GET    | `/api/suppliers/{id}`        | —                         | supplier object                    | `404`, `500`               |
+| Suppliers  | POST   | `/api/suppliers`             | —                         | created supplier object            | `400`, `409`, `500`        |
+| Suppliers  | PUT    | `/api/suppliers/{id}`        | —                         | updated supplier object            | `400`, `404`, `500`        |
+| Suppliers  | DELETE | `/api/suppliers/{id}`        | —                         | deleted confirmation or empty body | `404`, `500`               |
+| Products   | GET    | `/api/products`              | `inStock`, `page`, `size` | product list                       | `400`, `500`               |
+| Products   | GET    | `/api/products/{id}`         | —                         | product object                     | `404`, `500`               |
+| Products   | POST   | `/api/products`              | —                         | created product object             | `400`, `409`, `500`        |
+| Products   | PUT    | `/api/products/{id}`         | —                         | updated product object             | `400`, `404`, `500`        |
+| Products   | DELETE | `/api/products/{id}`         | —                         | deleted confirmation or empty body | `404`, `500`               |
+| Customers  | GET    | `/api/customers`             | `page`, `size`            | customer list                      | `400`, `500`               |
+| Customers  | GET    | `/api/customers/{id}`        | —                         | customer object                    | `404`, `500`               |
+| Customers  | POST   | `/api/customers`             | —                         | created customer object            | `400`, `409`, `500`        |
+| Customers  | PUT    | `/api/customers/{id}`        | —                         | updated customer object            | `400`, `404`, `500`        |
+| Customers  | DELETE | `/api/customers/{id}`        | —                         | deleted confirmation or empty body | `404`, `500`               |
+| Orders     | GET    | `/api/orders`                | `status`, `page`, `size`  | paged order summary list           | `400`, `500`               |
+| Orders     | GET    | `/api/orders/{id}`           | —                         | order object with items            | `404`, `500`               |
+| Orders     | GET    | `/api/orders/{id}/history`   | —                         | list of status history entries     | `404`, `500`               |
+| Orders     | POST   | `/api/orders`                | —                         | created order object               | `400`, `409`, `500`        |
+| Orders     | POST   | `/api/orders/{id}/cancel`    | —                         | cancelled order object             | `409`, `404`, `500`        |
+| Orders     | PATCH  | `/api/orders/{id}/status`    | —                         | updated order object               | `400`, `409`, `404`, `500` |
+| Orders     | DELETE | `/api/orders/cancelled`      | `olderThanDays`           | `{ "deletedOrders": n }`           | `400`, `500`               |
+| Categories | GET    | `/api/categories`            | `page`, `size`            | category list                      | `400`, `500`               |
+| Categories | GET    | `/api/categories/{id}`       | —                         | category object                    | `404`, `500`               |
+| Reports    | GET    | `/api/reports/monthly-sales` | —                         | sales summary JSON                 | `500`                      |
+| Reports    | GET    | `/api/reports/low-stock`     | `threshold`, `limit`      | low-stock list                     | `400`, `500`               |
+| Reports    | GET    | `/api/reports/top-products`  | `limit`                   | top products list                  | `400`, `500`               |
+| Reports    | GET    | `/api/reports/top-customers` | `limit`                   | top customers list                 | `400`, `500`               |
+
 
 ---
 
