@@ -30,6 +30,7 @@ The project includes the main backend flow for a web shop:
 - reports for low stock, sales, and top customers
 - JPA relationships, inheritance, and database triggers for business rules
 
+---
 ## Installation and Setup
 
 ### Prerequisites
@@ -109,6 +110,8 @@ src/
             └── ...
 ```
 
+---
+
 ## Database features
 
 The `verkkis` schema includes a few database-level features that support the webshop logic.
@@ -123,6 +126,8 @@ SQL scripts used in project [sql](sql).
 | Event        | `evt_clean_old_cancelled_orders`                                                           | Removes cancelled orders older than 90 days                   |
 | Temporal     | `ALTER TABLE orders ADD SYSTEM VERSIONING`                                                 | Keeps order history for status tracking                       |
 | Transactions | Order creation in one transaction                                                          | Keeps order + lines + stock updates consistent                |
+
+---
 
 ## API Documentation
 
@@ -219,12 +224,6 @@ Common query parameters:
 
 ```json
 {
-  "percent": 15
-}
-```
-
-```json
-{
   "status": "SHIPPED"
 }
 ```
@@ -237,6 +236,42 @@ curl http://localhost:8081/api/products?inStock=true
 curl http://localhost:8081/api/orders
 curl http://localhost:8081/api/reports/low-stock?threshold=5&limit=20
 ```
+
+---
+
+## Security and data protection
+ 
+Security in this project is implemented mainly at the database level.
+ 
+### Database users and privileges
+ 
+Two database roles are used, following the principle of least privilege.
+ 
+| Role | Account | Privileges | Purpose |
+|---|---|---|---|
+| Administrator | `admin`@`localhost` | `ALL PRIVILEGES` on `verkkis.*` | Manages products, customers, orders, suppliers and categories, and runs schema changes |
+| Customer | `customer`@`localhost` | `SELECT` on `products` and `productcategories`; `INSERT` on `orders` and `orderitems` | Web-shop use only: browse products and place orders |
+ 
+```sql
+-- Administrator
+CREATE USER 'admin'@'localhost' IDENTIFIED BY '<strong password>';
+GRANT ALL PRIVILEGES ON verkkis.* TO 'admin'@'localhost';
+ 
+-- Customer (web-shop user)
+CREATE USER 'customer'@'localhost' IDENTIFIED BY '<strong password>';
+GRANT SELECT ON verkkis.products          TO 'customer'@'localhost';
+GRANT SELECT ON verkkis.productcategories TO 'customer'@'localhost';
+GRANT INSERT ON verkkis.orders            TO 'customer'@'localhost';
+GRANT INSERT ON verkkis.orderitems        TO 'customer'@'localhost';
+```
+ 
+The customer account cannot read other customers' data, change or delete products, or modify existing orders. If a user is given too many privileges by mistake, they are removed with `REVOKE`:
+ 
+```sql
+REVOKE ALL PRIVILEGES ON verkkis.* FROM 'customer'@'localhost';
+```
+
+---
 
 ## Testing
 
