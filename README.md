@@ -6,28 +6,16 @@ Authors: Elias Norta, Veijo Kasanen
 
 This project is a web shop and supplier admin backend. It covers product, customer, supplier, and order management in a commerce workflow.
 
-## Usage completion view
-
-From this perspective, the project is complete for the main backend flow:
-
-- supplier management
-- product catalog and stock handling
-- customer and order processing
-- discount/restock logic
-- reporting for low stock and sales
-
-This is not a full storefront or production security setup, but it matches the backend admin/web shop use case the project is designed to demonstrate.
-
 ## What is implemented
 
-The project includes the main backend flow for a web shop:
+The project implements the main backend flow for a webshop and supplier management system:
 
-- supplier CRUD and supplier product management
-- product catalog, filtering, stock updates, and pricing logic
-- customer and address handling
+- supplier CRUD and supplier-product management
+- product catalog, filtering, stock control, and pricing logic
+- customer and address management
 - order creation, cancellation, status updates, and order history
 - category-based product browsing
-- reports for low stock, sales, and top customers
+- sales, low-stock, and top-customer reporting
 - JPA relationships, inheritance, and database triggers for business rules
 
 ---
